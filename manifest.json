@@ -1,1 +1,21 @@
-{"name":"ERO SOUND PAD","short_name":"ERO PAD","description":"USB MIDI percussion sound module","start_url":"./","display":"standalone","background_color":"#090d16","theme_color":"#090d16","icons":[{"src":"assets/icons/icon.svg","sizes":"any","type":"image/svg+xml"}]}
+
+{
+  "id": "./",
+  "name": "ERO SOUND PAD",
+  "short_name": "ERO PAD",
+  "description": "Professional USB MIDI Octapad Sound Module",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#070b13",
+  "theme_color": "#080d18",
+  "icons": [
+    {
+      "src": "./assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
