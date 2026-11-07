@@ -655,7 +655,14 @@
       if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(() => {});
     }, { once: true });
     if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
-      window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(error => console.warn("Service Worker:", error)));
+      window.addEventListener("load", async () => {
+        try {
+          const registration = await navigator.serviceWorker.register("./service-worker.js", { updateViaCache: "none" });
+          registration.update().catch(() => {});
+        } catch (error) {
+          console.warn("Service Worker:", error);
+        }
+      });
     }
   }
 
