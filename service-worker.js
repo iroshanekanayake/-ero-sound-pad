@@ -1,6 +1,6 @@
 /* ERO SOUND PAD PWA Service Worker */
 'use strict';
-const CACHE_NAME = 'ero-sound-pad-v2.0.0';
+const CACHE_NAME = 'ero-sound-pad-v2.1.0';
 const APP_FILES = [
   './', './index.html', './manifest.json', './app.js',
   './audio-engine.js', './sample-store.js', './style.css',

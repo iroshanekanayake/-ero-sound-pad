@@ -776,6 +776,66 @@ button {
 .backing-time { display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
 #backingTrackName { overflow-wrap:anywhere; }
 
+
+
+/* v2.1 PREMIUM MENU THEME + HARDWARE-STYLE BUTTON FEEDBACK */
+#menuPanel {
+  color: #eaf5ff !important;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(24,112,190,.20), transparent 42%),
+    linear-gradient(160deg, #09182a 0%, #060d18 62%, #081321 100%) !important;
+  border-left: 1px solid #3b79a8 !important;
+  box-shadow: -14px 0 38px rgba(0,0,0,.72), inset 1px 0 rgba(125,198,255,.08) !important;
+}
+#menuPanel .menu-heading {
+  color: #d9efff !important;
+  text-shadow: 0 0 12px rgba(47,160,255,.35);
+  border-bottom-color: #285579 !important;
+  background: rgba(7,16,29,.97) !important;
+}
+#menuPanel .menu-section {
+  border-color: #294f70 !important;
+  background: linear-gradient(145deg, rgba(18,39,61,.98), rgba(8,20,34,.98)) !important;
+  box-shadow: inset 0 1px rgba(170,220,255,.045), 0 5px 14px rgba(0,0,0,.18);
+}
+#menuPanel .menu-section h3 {
+  color: #78c9ff !important;
+  text-shadow: 0 0 8px rgba(36,151,255,.18);
+}
+#menuPanel button,
+#app button:not([data-pad]) {
+  transition: transform .075s ease, filter .075s ease, box-shadow .075s ease, background-color .075s ease;
+  transform: translateY(0) scale(1);
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+#menuPanel button:active,
+#app button:not([data-pad]):active {
+  transform: translateY(2px) scale(.975);
+  filter: brightness(1.28);
+  box-shadow: inset 0 3px 7px rgba(0,0,0,.48), 0 0 10px rgba(48,164,255,.22) !important;
+}
+#menuPanel button {
+  border: 1px solid #3979a8;
+  border-radius: 8px;
+  color: #f2f9ff;
+  background: linear-gradient(180deg, #1c4b70, #102b45);
+  box-shadow: inset 0 1px rgba(210,240,255,.13), 0 3px 7px rgba(0,0,0,.3);
+}
+#menuPanel button:focus-visible,
+#app button:focus-visible {
+  outline: 2px solid #75d5ff;
+  outline-offset: 2px;
+}
+#closeMenu { background: linear-gradient(180deg,#285578,#142f49) !important; }
+#menuPanel input, #menuPanel select {
+  accent-color: #29aaff;
+}
+@media (prefers-reduced-motion: reduce) {
+  #menuPanel button, #app button { transition: none !important; }
+}
+
 </style>
 </head>
 

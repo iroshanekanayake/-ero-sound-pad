@@ -128,3 +128,11 @@ ZIP import supports standard ZIP entries compressed with Store or Deflate. ZIP64
 - Service worker cache version updated to v2.0.0.
 
 Note: actual codec support and long-duration background playback depend on the Android browser/device. Test MP3/WAV playback on the target phone.
+
+
+## v2.1 – Premium Menu Theme & Button Feedback
+- Added a dedicated premium dark-blue/cyan visual theme for the Settings/Menu drawer.
+- Added tactile pressed-state feedback to menu and control buttons (brief press-in, brightness and inset shadow).
+- Kept the existing pad press animation and shared pad flash behavior for touch/MIDI hits.
+- No changes to Audio Engine, sample decoding, MIDI trigger logic, backing-track playback, sample storage, or kit data structures.
+- Service Worker cache version updated to v2.1.0.
