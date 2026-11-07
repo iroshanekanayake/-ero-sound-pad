@@ -15,6 +15,7 @@
   let selectedLayer = "A";
   let kits = [];
   let selectedKitId = "";
+  let mainKitIndex = 0;
 
   const config = {
     notes: defaultNotes.slice(),
@@ -158,7 +159,11 @@
           return;
         }
         const padIndex = config.notes.indexOf(note);
-        if (padIndex !== -1) hit(padIndex, velocity);
+        if (padIndex !== -1) {
+          hit(padIndex, velocity);
+        } else {
+          $("midiMonitor").textContent = `CH ${channel} · NOTE ${note} · VELOCITY ${velocity} · UNMAPPED`;
+        }
       };
     });
   }
@@ -249,8 +254,10 @@
     const layer = currentLayerConfig();
     $("samplePitch").value = layer.pitch;
     $("samplePitchValue").textContent = layer.pitch + " semitones";
-    $("sampleVolume").value = layer.volume;
-    $("sampleVolumeValue").textContent = layer.volume + "%";
+    $("sampleVolumeA").value = pad.layers.A.volume;
+    $("sampleVolumeAValue").textContent = pad.layers.A.volume + "%";
+    $("sampleVolumeB").value = pad.layers.B.volume;
+    $("sampleVolumeBValue").textContent = pad.layers.B.volume + "%";
     $("samplePan").value = layer.pan;
     $("samplePanValue").textContent = layer.pan === 0 ? "Center" : (layer.pan < 0 ? "Left " : "Right ") + Math.abs(layer.pan);
   }
@@ -261,7 +268,8 @@
     pad.velocitySplit = Number($("velocitySplit").value);
     const layer = currentLayerConfig();
     layer.pitch = Number($("samplePitch").value);
-    layer.volume = Number($("sampleVolume").value);
+    pad.layers.A.volume = Number($("sampleVolumeA").value);
+    pad.layers.B.volume = Number($("sampleVolumeB").value);
     layer.pan = Number($("samplePan").value);
     saveConfig();
     renderAssignments();
@@ -381,6 +389,14 @@
     $("kitLibraryStatus").textContent = count
       ? `${count} saved kit${count === 1 ? "" : "s"} on this device.`
       : "Save your current eight-pad setup as a named kit.";
+    if (count) {
+      const idx = kits.findIndex(kit => kit.id === selectedKitId);
+      mainKitIndex = idx >= 0 ? idx : 0;
+      $("kitName").textContent = kits[mainKitIndex].name;
+    } else {
+      $("kitName").textContent = "STUDIO";
+      mainKitIndex = 0;
+    }
   }
 
   async function saveCurrentKit() {
@@ -414,35 +430,57 @@
     }
   }
 
+  async function applyKitRecord(kit) {
+    if (!kit) return toast("Saved kit was not found");
+    if (Array.isArray(kit.notes) && kit.notes.length === 8) config.notes = kit.notes.slice();
+    if (Array.isArray(kit.pads) && kit.pads.length === 8) {
+      config.pads = kit.pads.map(pad => ({
+        layerMode: pad.layerMode === "velocity" ? "velocity" : "both",
+        velocitySplit: Number(pad.velocitySplit) || 90,
+        layers: {
+          A: { sampleId: pad.layers?.A?.sampleId || "", pitch: Number(pad.layers?.A?.pitch) || 0, volume: Number(pad.layers?.A?.volume ?? 100), pan: Number(pad.layers?.A?.pan) || 0 },
+          B: { sampleId: pad.layers?.B?.sampleId || "", pitch: Number(pad.layers?.B?.pitch) || 0, volume: Number(pad.layers?.B?.volume ?? 100), pan: Number(pad.layers?.B?.pan) || 0 }
+        }
+      }));
+    }
+    config.channel = Number(kit.channel) || 0;
+    config.velocityCurve = kit.velocityCurve || "linear";
+    selectedKitId = kit.id;
+    $("savedKits").value = kit.id;
+    $("kitNameInput").value = kit.name;
+    $("kitName").textContent = kit.name;
+    $("midiChannel").value = String(config.channel);
+    $("velocityCurve").value = config.velocityCurve;
+    saveConfig();
+    renderMapping();
+    renderAssignments();
+    renderPadPicker();
+    toast(`Kit "${kit.name}" loaded`);
+  }
+
   async function loadSelectedKit() {
     if (!selectedKitId) return toast("Select a saved kit first");
     try {
       const kit = await window.EROSampleStore.getKit(selectedKitId);
-      if (!kit) return toast("Saved kit was not found");
-      if (Array.isArray(kit.notes) && kit.notes.length === 8) config.notes = kit.notes.slice();
-      if (Array.isArray(kit.pads) && kit.pads.length === 8) {
-        config.pads = kit.pads.map(pad => ({
-          layerMode: pad.layerMode === "velocity" ? "velocity" : "both",
-          velocitySplit: Number(pad.velocitySplit) || 90,
-          layers: {
-            A: { sampleId: pad.layers?.A?.sampleId || "", pitch: Number(pad.layers?.A?.pitch) || 0, volume: Number(pad.layers?.A?.volume ?? 100), pan: Number(pad.layers?.A?.pan) || 0 },
-            B: { sampleId: pad.layers?.B?.sampleId || "", pitch: Number(pad.layers?.B?.pitch) || 0, volume: Number(pad.layers?.B?.volume ?? 100), pan: Number(pad.layers?.B?.pan) || 0 }
-          }
-        }));
-      }
-      config.channel = Number(kit.channel) || 0;
-      config.velocityCurve = kit.velocityCurve || "linear";
-      $("midiChannel").value = String(config.channel);
-      $("velocityCurve").value = config.velocityCurve;
-      saveConfig();
-      renderMapping();
-      renderAssignments();
-      renderPadPicker();
-      $("kitNameInput").value = kit.name;
-      toast(`Kit "${kit.name}" loaded`);
+      await applyKitRecord(kit);
     } catch (error) {
       console.error(error);
       toast("Could not load this kit");
+    }
+  }
+
+  async function navigateSavedKit(direction) {
+    if (!kits.length) {
+      toast("Save a custom kit first");
+      return;
+    }
+    mainKitIndex = (mainKitIndex + direction + kits.length) % kits.length;
+    try {
+      const kit = await window.EROSampleStore.getKit(kits[mainKitIndex].id);
+      await applyKitRecord(kit);
+    } catch (error) {
+      console.error(error);
+      toast("Could not switch kit");
     }
   }
 
@@ -553,7 +591,8 @@
     const ranges = [
       ["velocitySplit","velocitySplitValue",v=>String(v)],
       ["samplePitch","samplePitchValue",v=>v+" semitones"],
-      ["sampleVolume","sampleVolumeValue",v=>v+"%"],
+      ["sampleVolumeA","sampleVolumeAValue",v=>v+"%"],
+      ["sampleVolumeB","sampleVolumeBValue",v=>v+"%"],
       ["samplePan","samplePanValue",v=>v==0?"Center":(v<0?"Left ":"Right ")+Math.abs(v)]
     ];
     ranges.forEach(([input,output,format]) => {
@@ -575,22 +614,19 @@
     $("menuButton").addEventListener("click", () => menuPanel.classList.add("open"));
     $("closeMenu").addEventListener("click", () => menuPanel.classList.remove("open"));
 
-    const kits = [
+    const builtInKits = [
       { value: "studio", name: "STUDIO" },
       { value: "electronic", name: "ELECTRONIC" },
       { value: "world", name: "WORLD" },
       { value: "sri-lankan", name: "SRI LANKAN" }
     ];
-    let currentKit = 0;
     const kitSelect = $("kit");
-    function changeKit(index) {
-      currentKit = (index + kits.length) % kits.length;
-      $("kitName").textContent = kits[currentKit].name;
-      kitSelect.value = kits[currentKit].value;
-      kitSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    $("previousKit").addEventListener("click", () => changeKit(currentKit - 1));
-    $("nextKit").addEventListener("click", () => changeKit(currentKit + 1));
+    $("previousKit").addEventListener("click", () => navigateSavedKit(-1));
+    $("nextKit").addEventListener("click", () => navigateSavedKit(1));
+    kitSelect.addEventListener("change", event => {
+      const selected = builtInKits.find(item => item.value === event.target.value);
+      if (selected && !kits.length) $("kitName").textContent = selected.name;
+    });
 
     const designDefaults = {
       padColor:"#19385e", borderColor:"#8fc5ff", glow:55, radius:"10px", background:"dark"

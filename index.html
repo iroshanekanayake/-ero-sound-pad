@@ -419,6 +419,15 @@ button {
 }
 
 
+.layer-volume-box {
+    margin: 8px 0;
+    padding: 9px;
+    border: 1px solid #355a80;
+    border-radius: 8px;
+    background: rgba(22,48,76,.55);
+}
+.layer-volume-box input { width: 100%; }
+
 /* EIGHT-PAD VISUAL EDITOR */
 .pad-picker-heading {
     margin: 8px 0;
@@ -862,9 +871,16 @@ button {
         <label class="design-label" for="samplePitch">Pitch (semitones)</label>
         <input id="samplePitch" type="range" min="-24" max="24" value="0">
         <div id="samplePitchValue" class="design-value">0 semitones</div>
-        <label class="design-label" for="sampleVolume">Layer Volume</label>
-        <input id="sampleVolume" type="range" min="0" max="150" value="100">
-        <div id="sampleVolumeValue" class="design-value">100%</div>
+        <div class="layer-volume-box">
+          <label class="design-label" for="sampleVolumeA">LAYER A VOLUME</label>
+          <input id="sampleVolumeA" type="range" min="0" max="150" value="100">
+          <div id="sampleVolumeAValue" class="design-value">100%</div>
+        </div>
+        <div class="layer-volume-box">
+          <label class="design-label" for="sampleVolumeB">LAYER B VOLUME</label>
+          <input id="sampleVolumeB" type="range" min="0" max="150" value="100">
+          <div id="sampleVolumeBValue" class="design-value">100%</div>
+        </div>
         <label class="design-label" for="samplePan">Pan</label>
         <input id="samplePan" type="range" min="-100" max="100" value="0">
         <div id="samplePanValue" class="design-value">Center</div>

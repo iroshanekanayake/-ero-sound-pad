@@ -87,3 +87,11 @@ Files:
 
 \n## v1.4 bulk import fix and visual pad editor\n\n- Bulk WAV import validates RIFF/WAVE headers as well as file names and MIME types, improving compatibility with Android file providers.\n- Import errors are shown in the sample status area.\n- Added an eight-pad visual selector to the Pad Sample Assignment & Editor section. Tap Pad 1–8 to switch the editing controls to that pad.\n- The existing pad selector dropdown remains as a secondary selection method.\n
 \n## v1.5 cache refresh fix\n\n- Corrected the Service Worker cache version to `ero-sound-pad-v1.5.0` (the prior package had retained the old cache name).\n- The new Service Worker removes older ERO SOUND PAD caches and takes control after installation.\n- Registration requests an update with `updateViaCache: none` so deployed JavaScript and the eight-pad visual selector are refreshed.\n- The eight-pad selector is included in the Pad Sample Assignment & Editor section; tap a pad to edit it.\n
+
+## v1.6 custom kit display, independent layer volumes, MIDI note diagnosis
+
+- Main screen Previous/Next now browses saved custom kits and loads their full eight-pad configurations.
+- Saving a kit refreshes the main kit display to the saved kit name.
+- Added separate Layer A and Layer B volume sliders; both values are stored with each pad and therefore with each kit.
+- Unmapped MIDI notes are identified in the MIDI monitor to help diagnose controller note-number mismatches (use MIDI Learn for Pad 5 if the controller sends a different note).
+- Service worker cache bumped to v1.6.0.
