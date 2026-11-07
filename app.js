@@ -195,18 +195,37 @@
     $("midiTag").textContent = count ? count + " INPUT(S) FOUND" : "NO DEVICE";
   }
 
+  function getSampleFolders() {
+    try { return JSON.parse(localStorage.getItem("eroSoundPadFolders") || "[]"); }
+    catch (_) { return []; }
+  }
+
+  function refreshFolderPicker() {
+    const picker = $("sampleFolder");
+    if (!picker) return;
+    const current = picker.value || "All";
+    const names = [...new Set([...getSampleFolders(), ...samples.map(s => s.folder).filter(Boolean), ...(samples.some(s => !s.folder) ? ["Unfiled"] : [])])].sort((a,b) => a.localeCompare(b));
+    picker.innerHTML = "";
+    picker.add(new Option("All Folders", "All"));
+    names.forEach(name => picker.add(new Option(name, name)));
+    picker.value = names.includes(current) ? current : "All";
+  }
+
   async function refreshSamples() {
     samples = await window.EROSampleStore.all();
     samples.sort((a,b) => a.name.localeCompare(b.name));
+    refreshFolderPicker();
     const select = $("sampleLibrary");
     const old = selectedSampleId;
+    const folder = $("sampleFolder") ? $("sampleFolder").value : "All";
+    const visible = folder === "All" ? samples : samples.filter(sample => (sample.folder || "Unfiled") === folder);
     select.innerHTML = "";
-    if (!samples.length) {
-      select.add(new Option("No samples imported", ""));
+    if (!visible.length) {
+      select.add(new Option("No samples in this folder", ""));
       selectedSampleId = "";
     } else {
-      samples.forEach(sample => select.add(new Option(sample.name, sample.id)));
-      selectedSampleId = samples.some(s => s.id === old) ? old : samples[0].id;
+      visible.forEach(sample => select.add(new Option(sample.name, sample.id)));
+      selectedSampleId = visible.some(s => s.id === old) ? old : visible[0].id;
       select.value = selectedSampleId;
     }
     renderAssignments();
@@ -295,6 +314,7 @@
         type: file.type || "audio/wav",
         size: file.size,
         addedAt: Date.now(),
+        folder: $("sampleFolder")?.value && $("sampleFolder").value !== "All" ? $("sampleFolder").value : "Unfiled",
         data
       });
       await refreshSamples();
@@ -351,6 +371,7 @@
           type: file.type || "audio/wav",
           size: file.size,
           addedAt: Date.now(),
+          folder: $("sampleFolder")?.value && $("sampleFolder").value !== "All" ? $("sampleFolder").value : "Unfiled",
           data
         });
         importedIds.push(id);
@@ -362,7 +383,7 @@
         selectedSampleId = importedIds[0];
         $("sampleLibrary").value = selectedSampleId;
         $("sampleStatus").textContent =
-          `${imported} WAV samples imported and saved on this device.` +
+          `${imported} WAV samples imported into ${$("sampleFolder").value === "All" ? "Unfiled" : $("sampleFolder").value}.` +
           (rejected ? ` ${rejected} non-WAV file(s) skipped.` : "");
       }
       toast(`${imported} WAV sample(s) imported`);
@@ -567,6 +588,20 @@
 
     $("sampleUpload").addEventListener("change", event => importWav(event.target.files[0]));
     $("sampleUploadMultiple").addEventListener("change", event => importMultipleWavs(event.target.files));
+    $("sampleFolder").addEventListener("change", () => refreshSamples());
+    $("createSampleFolder").addEventListener("click", async () => {
+      const field = $("newSampleFolder");
+      const name = (field.value || "").trim().replace(/[\\/:*?"<>|]/g, "-");
+      if (!name) return toast("Enter a folder name first");
+      const folders = getSampleFolders();
+      if (!folders.some(folder => folder.toLowerCase() === name.toLowerCase())) folders.push(name);
+      localStorage.setItem("eroSoundPadFolders", JSON.stringify(folders));
+      await refreshFolderPicker();
+      $("sampleFolder").value = name;
+      field.value = "";
+      await refreshSamples();
+      toast("Folder created: " + name);
+    });
     $("sampleLibrary").addEventListener("change", event => {
       selectedSampleId = event.target.value;
       const sample = samples.find(s => s.id === selectedSampleId);

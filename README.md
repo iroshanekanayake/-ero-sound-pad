@@ -97,3 +97,9 @@ Files:
 - Service worker cache bumped to v1.6.0.
 
 \n## v1.7 Full-screen settings and focused pad editor\n\n- Settings opens as a full-screen landscape workspace, separate from the playing display.\n- The Pad Editor has a prominent eight-pad selector. Selecting Pad 1–8 updates the same editor controls for that pad.\n- The editor heading identifies the currently selected pad.\n- Existing Play Screen, audio engine, MIDI mapping, sample storage, kit manager and Layer A/B controls are retained.\n- Service Worker cache version bumped to v1.7.0 to ensure the new interface is fetched.\n
+
+## v1.8 — Compact Menu & Sample Folders
+- Changed the settings panel from full-screen to a compact right-side landscape drawer, inspired by the supplied FL Studio Mobile reference.
+- Added sample folder creation and folder filtering.
+- Bulk WAV import now saves all selected WAV files into the currently selected folder. Existing samples remain in their existing records and are treated as Unfiled.
+- Existing audio engine, MIDI, pad editor, and kit manager code retained.
