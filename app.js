@@ -1,1 +1,462 @@
-(()=>{'use strict';const pads=[['KICK',36,'kick'],['SNARE',38,'snare'],['CLOSED HAT',42,'hat'],['OPEN HAT',46,'open'],['LOW TOM',45,'tom'],['MID TOM',47,'tom'],['CRASH',49,'crash'],['RIDE',51,'ride']];const $=id=>document.getElementById(id);let ctx=null,master=null,midi=null,learn=null,kit='studio';const notes=pads.map(p=>p[1]);function msg(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(msg.timer);msg.timer=setTimeout(()=>e.classList.remove('show'),2300)}function audio(){if(!ctx){const C=window.AudioContext||window.webkitAudioContext;if(!C){msg('Web Audio is not supported');return false}ctx=new C();master=ctx.createGain();master.gain.value=+$('volume').value/100;master.connect(ctx.destination);$('rate').textContent=ctx.sampleRate+' Hz'}if(ctx.state==='suspended')ctx.resume();$('audio').textContent='Ready';return true}function hit(i,vel=100){if(!audio())return;const type=pads[i][2],now=ctx.currentTime,v=Math.max(1,Math.min(127,vel))/127,amp=ctx.createGain();amp.gain.setValueAtTime(.0001,now);amp.gain.exponentialRampToValueAtTime(Math.max(.01,v*.65),now+.004);amp.gain.exponentialRampToValueAtTime(.0001,now+({kick:.24,snare:.17,hat:.06,open:.32,tom:.25,crash:.65,ride:.4}[type]||.2));amp.connect(master);let src;if(['hat','open','crash','ride','snare'].includes(type)){const n=Math.floor(ctx.sampleRate*.75),buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);for(let x=0;x<n;x++)d[x]=Math.random()*2-1;src=ctx.createBufferSource();src.buffer=buf;const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=type==='snare'?1200:4500;src.connect(f);f.connect(amp)}else{src=ctx.createOscillator();src.type=type==='snare'?'triangle':'sine';src.frequency.setValueAtTime(type==='kick'?130:type==='tom'?160:190,now);src.frequency.exponentialRampToValueAtTime(type==='kick'?42:65,now+.22);src.connect(amp)}src.start(now);src.stop(now+.72);const el=document.querySelector('[data-pad="'+i+'"]');el.classList.add('active');setTimeout(()=>el.classList.remove('active'),110)}function render(){ $('mapping').innerHTML=pads.map((p,i)=>`<div class="mapping-row"><b>${String(i+1).padStart(2,'0')} · ${p[0]}</b><span>MIDI NOTE ${notes[i]}</span><button class="learn ${learn===i?'wait':''}" data-learn="${i}">${learn===i?'WAITING…':'MIDI LEARN'}</button></div>`).join('');document.querySelectorAll('[data-learn]').forEach(b=>b.onclick=()=>{learn=+b.dataset.learn;render();msg('Hit a controller pad to learn '+pads[learn][0])})}function midiMsg(e){const [s,n,v]=e.data;if((s&240)!==144||v===0)return;if(learn!==null){notes[learn]=n;const name=pads[learn][0];learn=null;render();msg(name+' mapped to note '+n);return}const i=notes.indexOf(n);if(i>=0)hit(i,v)}function status(){const count=midi?midi.inputs.size:0;$('connection').textContent=count?count+' MIDI INPUT(S) READY':'MIDI ENABLED · NO DEVICE';$('dot').classList.toggle('on',count>0);$('midiTag').textContent=count?count+' INPUT(S) FOUND':'NO DEVICE'}document.querySelectorAll('[data-pad]').forEach(b=>b.addEventListener('pointerdown',e=>{e.preventDefault();hit(+b.dataset.pad)}));$('midi').onclick=async()=>{if(!navigator.requestMIDIAccess){msg('Web MIDI unavailable in this browser.');return}try{midi=await navigator.requestMIDIAccess({sysex:false});midi.inputs.forEach(x=>x.onmidimessage=midiMsg);midi.onstatechange=()=>{midi.inputs.forEach(x=>x.onmidimessage=midiMsg);status()};status();msg(midi.inputs.size?'MIDI access granted':'Connect your MIDI controller')}catch(e){msg('MIDI permission failed: '+e.message)}};$('kit').onchange=e=>{kit=e.target.value;msg(e.target.selectedOptions[0].text+' selected')};$('volume').oninput=e=>{const v=+e.target.value;$('volumeText').textContent=v+'%';if(audio())master.gain.setTargetAtTime(v/100,ctx.currentTime,.02)};$('stop').onclick=()=>{if(master&&ctx){master.gain.setTargetAtTime(0,ctx.currentTime,.01);setTimeout(()=>master.gain.setTargetAtTime(+$('volume').value/100,ctx.currentTime,.03),100)}msg('All voices muted')};render();if('serviceWorker'in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}))})();
+/* ERO SOUND PAD - application controller */
+(() => {
+  "use strict";
+
+  const padNames = ["KICK","SNARE","CLOSED HAT","OPEN HAT","LOW TOM","MID TOM","CRASH","RIDE"];
+  const defaultNotes = [36,38,42,46,45,47,49,51];
+  const $ = id => document.getElementById(id);
+  const STORE_KEY = "ERO_SOUND_PAD_ENGINE_CONFIG_V1";
+  let midiAccess = null;
+  let learnPad = null;
+  let selectedMidiInput = "";
+  let samples = [];
+  let selectedSampleId = "";
+  let selectedPad = 0;
+  let selectedLayer = "A";
+
+  const config = {
+    notes: defaultNotes.slice(),
+    channel: 0,
+    velocityCurve: "linear",
+    pads: padNames.map(() => ({
+      layerMode: "both",
+      velocitySplit: 90,
+      layers: {
+        A: { sampleId: "", pitch: 0, volume: 100, pan: 0 },
+        B: { sampleId: "", pitch: 0, volume: 100, pan: 0 }
+      }
+    }))
+  };
+
+  function toast(message) {
+    const el = $("toast");
+    if (!el) return;
+    el.textContent = message;
+    el.classList.add("show");
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  function saveConfig() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(config)); }
+    catch (error) { toast("Could not save settings on this device"); }
+  }
+
+  function loadConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+      if (!saved) return;
+      if (Array.isArray(saved.notes) && saved.notes.length === 8) config.notes = saved.notes;
+      if (saved.channel !== undefined) config.channel = Number(saved.channel) || 0;
+      if (saved.velocityCurve) config.velocityCurve = saved.velocityCurve;
+      if (Array.isArray(saved.pads)) {
+        saved.pads.slice(0, 8).forEach((p, i) => {
+          if (!p) return;
+          config.pads[i].layerMode = p.layerMode === "velocity" ? "velocity" : "both";
+          config.pads[i].velocitySplit = Number(p.velocitySplit) || 90;
+          ["A","B"].forEach(layer => {
+            if (p.layers && p.layers[layer]) {
+              config.pads[i].layers[layer] = {
+                sampleId: p.layers[layer].sampleId || "",
+                pitch: Number(p.layers[layer].pitch) || 0,
+                volume: Number(p.layers[layer].volume ?? 100),
+                pan: Number(p.layers[layer].pan) || 0
+              };
+            }
+          });
+        });
+      }
+    } catch (error) { console.warn("Saved pad settings could not be read", error); }
+  }
+
+  function velocityValue(raw) {
+    const v = Math.max(1, Math.min(127, Number(raw) || 1)) / 127;
+    if (config.velocityCurve === "soft") return Math.sqrt(v) * 127;
+    if (config.velocityCurve === "hard") return v * v * 127;
+    return v * 127;
+  }
+
+  function flashPad(index) {
+    const el = document.querySelector('[data-pad="' + index + '"]');
+    if (!el) return;
+    el.classList.add("active");
+    clearTimeout(el._flashTimer);
+    el._flashTimer = setTimeout(() => el.classList.remove("active"), 105);
+  }
+
+  async function hit(index, velocity = 100) {
+    try {
+      await window.EROAudioEngine.triggerPad(index, velocityValue(velocity), config.pads[index]);
+      flashPad(index);
+    } catch (error) {
+      console.error(error);
+      toast(error.message || "Audio could not start");
+    }
+  }
+
+  function renderMapping() {
+    $("mapping").innerHTML = padNames.map((name, i) =>
+      `<div class="mapping-row">
+        <b>${String(i + 1).padStart(2,"0")} · ${name}</b>
+        <span>MIDI NOTE ${config.notes[i]}</span>
+        <button class="learn ${learnPad === i ? "wait" : ""}" data-learn="${i}">
+          ${learnPad === i ? "WAITING…" : "MIDI LEARN"}
+        </button>
+      </div>`
+    ).join("");
+    document.querySelectorAll("[data-learn]").forEach(button => {
+      button.addEventListener("click", () => {
+        learnPad = Number(button.dataset.learn);
+        renderMapping();
+        toast("Play the controller pad for " + padNames[learnPad]);
+      });
+    });
+  }
+
+  function renderMidiInputs() {
+    const select = $("midiDevice");
+    if (!select) return;
+    const old = selectedMidiInput;
+    select.innerHTML = "";
+    if (!midiAccess || midiAccess.inputs.size === 0) {
+      select.add(new Option("No MIDI input found", ""));
+      selectedMidiInput = "";
+      return;
+    }
+    select.add(new Option("All MIDI Inputs", "*"));
+    midiAccess.inputs.forEach(input => {
+      select.add(new Option(input.name || input.id, input.id));
+    });
+    select.value = Array.from(select.options).some(o => o.value === old) ? old : "*";
+    selectedMidiInput = select.value;
+    attachMidiHandlers();
+  }
+
+  function attachMidiHandlers() {
+    if (!midiAccess) return;
+    midiAccess.inputs.forEach(input => {
+      input.onmidimessage = event => {
+        if (selectedMidiInput && selectedMidiInput !== "*" && input.id !== selectedMidiInput) return;
+        const status = event.data[0];
+        const command = status & 0xF0;
+        const channel = (status & 0x0F) + 1;
+        const note = event.data[1];
+        const velocity = event.data[2] || 0;
+        if (command !== 0x90 || velocity === 0) return;
+        if (Number(config.channel) !== 0 && channel !== Number(config.channel)) return;
+
+        $("midiMonitor").textContent =
+          `CH ${channel} · NOTE ${note} · VELOCITY ${velocity}`;
+        if (learnPad !== null) {
+          config.notes[learnPad] = note;
+          toast(`${padNames[learnPad]} mapped to MIDI note ${note}`);
+          learnPad = null;
+          saveConfig();
+          renderMapping();
+          return;
+        }
+        const padIndex = config.notes.indexOf(note);
+        if (padIndex !== -1) hit(padIndex, velocity);
+      };
+    });
+  }
+
+  async function connectMidi() {
+    try { await window.EROAudioEngine.unlock(); } catch (error) { toast(error.message); }
+    if (!navigator.requestMIDIAccess) {
+      toast("Web MIDI is not supported by this browser. Try a supported desktop browser or Android MIDI-compatible app.");
+      return;
+    }
+    try {
+      midiAccess = await navigator.requestMIDIAccess({ sysex: false });
+      midiAccess.onstatechange = () => {
+        renderMidiInputs();
+        updateMidiStatus();
+      };
+      renderMidiInputs();
+      updateMidiStatus();
+      toast(midiAccess.inputs.size ? "MIDI input access granted" : "MIDI ready — connect your controller");
+    } catch (error) {
+      toast("MIDI permission failed: " + error.message);
+    }
+  }
+
+  function updateMidiStatus() {
+    const count = midiAccess ? midiAccess.inputs.size : 0;
+    $("connection").textContent = count ? count + " MIDI INPUT(S) READY" : "MIDI NOT CONNECTED";
+    $("dot").classList.toggle("on", count > 0);
+    $("midiTag").textContent = count ? count + " INPUT(S) FOUND" : "NO DEVICE";
+  }
+
+  async function refreshSamples() {
+    samples = await window.EROSampleStore.all();
+    samples.sort((a,b) => a.name.localeCompare(b.name));
+    const select = $("sampleLibrary");
+    const old = selectedSampleId;
+    select.innerHTML = "";
+    if (!samples.length) {
+      select.add(new Option("No samples imported", ""));
+      selectedSampleId = "";
+    } else {
+      samples.forEach(sample => select.add(new Option(sample.name, sample.id)));
+      selectedSampleId = samples.some(s => s.id === old) ? old : samples[0].id;
+      select.value = selectedSampleId;
+    }
+    renderAssignments();
+  }
+
+  function currentLayerConfig() {
+    return config.pads[selectedPad].layers[selectedLayer];
+  }
+
+  function renderAssignments() {
+    const pad = config.pads[selectedPad];
+    const getName = id => {
+      const sample = samples.find(s => s.id === id);
+      return sample ? sample.name : (id ? "Missing sample" : "Not assigned");
+    };
+    $("assignedSamples").textContent =
+      `PAD ${selectedPad + 1} · ${padNames[selectedPad]}\n` +
+      `Layer A: ${getName(pad.layers.A.sampleId)}\n` +
+      `Layer B: ${getName(pad.layers.B.sampleId)}`;
+    $("layerMode").value = pad.layerMode;
+    $("velocitySplit").value = pad.velocitySplit;
+    $("velocitySplitValue").textContent = pad.velocitySplit;
+    const layer = currentLayerConfig();
+    $("samplePitch").value = layer.pitch;
+    $("samplePitchValue").textContent = layer.pitch + " semitones";
+    $("sampleVolume").value = layer.volume;
+    $("sampleVolumeValue").textContent = layer.volume + "%";
+    $("samplePan").value = layer.pan;
+    $("samplePanValue").textContent = layer.pan === 0 ? "Center" : (layer.pan < 0 ? "Left " : "Right ") + Math.abs(layer.pan);
+  }
+
+  function saveEditorValues() {
+    const pad = config.pads[selectedPad];
+    pad.layerMode = $("layerMode").value;
+    pad.velocitySplit = Number($("velocitySplit").value);
+    const layer = currentLayerConfig();
+    layer.pitch = Number($("samplePitch").value);
+    layer.volume = Number($("sampleVolume").value);
+    layer.pan = Number($("samplePan").value);
+    saveConfig();
+    renderAssignments();
+  }
+
+  async function importWav(file) {
+    if (!file) return;
+    if (!/\.wav$/i.test(file.name) && !["audio/wav","audio/x-wav","audio/wave"].includes(file.type)) {
+      toast("Please choose a WAV audio file");
+      $("sampleUpload").value = "";
+      return;
+    }
+    try {
+      const data = await file.arrayBuffer();
+      const id = (crypto.randomUUID ? crypto.randomUUID() : "s" + Date.now() + Math.random().toString(16).slice(2));
+      await window.EROSampleStore.put({
+        id,
+        name: file.name,
+        type: file.type || "audio/wav",
+        size: file.size,
+        addedAt: Date.now(),
+        data
+      });
+      await refreshSamples();
+      selectedSampleId = id;
+      $("sampleLibrary").value = id;
+      $("sampleStatus").textContent = `Saved ${file.name} (${(file.size / 1024).toFixed(1)} KB) on this device.`;
+      toast("WAV imported and saved");
+    } catch (error) {
+      console.error(error);
+      toast("Could not save WAV. Check available phone storage.");
+    }
+    $("sampleUpload").value = "";
+  }
+
+  async function deleteSelectedSample() {
+    if (!selectedSampleId) return toast("Select a sample first");
+    const id = selectedSampleId;
+    await window.EROSampleStore.remove(id);
+    config.pads.forEach(pad => ["A","B"].forEach(layer => {
+      if (pad.layers[layer].sampleId === id) pad.layers[layer].sampleId = "";
+    }));
+    saveConfig();
+    await refreshSamples();
+    $("sampleStatus").textContent = "Sample deleted from this device.";
+    toast("Sample deleted");
+  }
+
+  async function assignSelectedSample() {
+    if (!selectedSampleId) return toast("Import or select a WAV sample first");
+    const record = await window.EROSampleStore.get(selectedSampleId);
+    if (!record) return toast("Selected sample was not found");
+    config.pads[selectedPad].layers[selectedLayer].sampleId = selectedSampleId;
+    saveConfig();
+    renderAssignments();
+    toast(`Assigned ${record.name} to ${padNames[selectedPad]} Layer ${selectedLayer}`);
+  }
+
+  function initEvents() {
+    document.querySelectorAll("[data-pad]").forEach(button => {
+      button.addEventListener("pointerdown", event => {
+        event.preventDefault();
+        hit(Number(button.dataset.pad), 100);
+      });
+    });
+
+    $("midi").addEventListener("click", connectMidi);
+    $("midiDevice").addEventListener("change", event => {
+      selectedMidiInput = event.target.value;
+      attachMidiHandlers();
+    });
+    $("midiChannel").value = String(config.channel);
+    $("midiChannel").addEventListener("change", event => {
+      config.channel = Number(event.target.value);
+      saveConfig();
+    });
+    $("velocityCurve").value = config.velocityCurve;
+    $("velocityCurve").addEventListener("change", event => {
+      config.velocityCurve = event.target.value;
+      saveConfig();
+    });
+
+    $("volume").addEventListener("input", event => {
+      const value = Number(event.target.value);
+      $("volumeText").textContent = value + "%";
+      window.EROAudioEngine.setMasterVolume(value / 100);
+    });
+    window.EROAudioEngine.setMasterVolume(Number($("volume").value) / 100);
+    $("stop").addEventListener("click", () => {
+      window.EROAudioEngine.stopAll();
+      toast("All voices stopped");
+    });
+
+    $("sampleUpload").addEventListener("change", event => importWav(event.target.files[0]));
+    $("sampleLibrary").addEventListener("change", event => {
+      selectedSampleId = event.target.value;
+      const sample = samples.find(s => s.id === selectedSampleId);
+      $("sampleStatus").textContent = sample ? `${sample.name} · ${(sample.size/1024).toFixed(1)} KB` : "No sample selected.";
+    });
+    $("previewSample").addEventListener("click", async () => {
+      if (!selectedSampleId) return toast("Select a sample first");
+      try { await window.EROAudioEngine.preview(selectedSampleId); }
+      catch (error) { toast("Preview failed: " + error.message); }
+    });
+    $("deleteSample").addEventListener("click", deleteSelectedSample);
+    $("editPad").addEventListener("change", event => {
+      selectedPad = Number(event.target.value);
+      renderAssignments();
+    });
+    $("editLayer").addEventListener("change", event => {
+      selectedLayer = event.target.value;
+      renderAssignments();
+    });
+    $("assignSample").addEventListener("click", assignSelectedSample);
+    $("savePadSettings").addEventListener("click", () => {
+      saveEditorValues();
+      toast("Pad settings saved");
+    });
+
+    const ranges = [
+      ["velocitySplit","velocitySplitValue",v=>String(v)],
+      ["samplePitch","samplePitchValue",v=>v+" semitones"],
+      ["sampleVolume","sampleVolumeValue",v=>v+"%"],
+      ["samplePan","samplePanValue",v=>v==0?"Center":(v<0?"Left ":"Right ")+Math.abs(v)]
+    ];
+    ranges.forEach(([input,output,format]) => {
+      $(input).addEventListener("input", () => {
+        $(output).textContent = format(Number($(input).value));
+      });
+      $(input).addEventListener("change", saveEditorValues);
+    });
+    $("layerMode").addEventListener("change", saveEditorValues);
+  }
+
+  function initMenuAndKit() {
+    const menuPanel = $("menuPanel");
+    $("menuButton").addEventListener("click", () => menuPanel.classList.add("open"));
+    $("closeMenu").addEventListener("click", () => menuPanel.classList.remove("open"));
+
+    const kits = [
+      { value: "studio", name: "STUDIO" },
+      { value: "electronic", name: "ELECTRONIC" },
+      { value: "world", name: "WORLD" },
+      { value: "sri-lankan", name: "SRI LANKAN" }
+    ];
+    let currentKit = 0;
+    const kitSelect = $("kit");
+    function changeKit(index) {
+      currentKit = (index + kits.length) % kits.length;
+      $("kitName").textContent = kits[currentKit].name;
+      kitSelect.value = kits[currentKit].value;
+      kitSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    $("previousKit").addEventListener("click", () => changeKit(currentKit - 1));
+    $("nextKit").addEventListener("click", () => changeKit(currentKit + 1));
+
+    const designDefaults = {
+      padColor:"#19385e", borderColor:"#8fc5ff", glow:55, radius:"10px", background:"dark"
+    };
+    const controls = {
+      padColor:$("designPadColor"), borderColor:$("designBorderColor"),
+      glow:$("designGlow"), radius:$("designRadius"), background:$("designBackground")
+    };
+    function applyDesign(settings) {
+      const root = document.documentElement;
+      root.style.setProperty("--pad-top", settings.padColor);
+      root.style.setProperty("--pad-border", settings.borderColor);
+      root.style.setProperty("--pad-glow", String(Number(settings.glow)/100));
+      root.style.setProperty("--pad-radius", settings.radius);
+      const backgrounds = {dark:"#070b13",blue:"#07182b",black:"#000000",forest:"#071b16"};
+      root.style.setProperty("--panel-bg", backgrounds[settings.background] || backgrounds.dark);
+      Object.keys(controls).forEach(key => controls[key].value = settings[key]);
+      $("designGlowValue").textContent = settings.glow + "%";
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem("ERO_SOUND_PAD_DESIGN_V1") || "null");
+      applyDesign(saved ? {...designDefaults,...saved} : designDefaults);
+    } catch (_) { applyDesign(designDefaults); }
+
+    function saveDesign() {
+      const settings = {
+        padColor:controls.padColor.value,
+        borderColor:controls.borderColor.value,
+        glow:Number(controls.glow.value),
+        radius:controls.radius.value,
+        background:controls.background.value
+      };
+      applyDesign(settings);
+      try { localStorage.setItem("ERO_SOUND_PAD_DESIGN_V1",JSON.stringify(settings)); } catch (_) {}
+    }
+    Object.values(controls).forEach(control => {
+      control.addEventListener("input", saveDesign);
+      control.addEventListener("change", saveDesign);
+    });
+    $("resetDesign").addEventListener("click", () => {
+      applyDesign(designDefaults);
+      try { localStorage.removeItem("ERO_SOUND_PAD_DESIGN_V1"); } catch (_) {}
+    });
+  }
+
+  async function init() {
+    loadConfig();
+    initEvents();
+    initMenuAndKit();
+    renderMapping();
+    renderAssignments();
+    try {
+      await refreshSamples();
+    } catch (error) {
+      $("sampleStatus").textContent = "Local sample storage is unavailable in this browser.";
+    }
+    updateMidiStatus();
+    document.addEventListener("pointerdown", () => {
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock("landscape").catch(() => {});
+    }, { once: true });
+    if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+      window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(error => console.warn("Service Worker:", error)));
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();

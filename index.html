@@ -457,6 +457,66 @@ button {
     font-weight: bold;
 }
 
+
+/* AUDIO ENGINE / SAMPLE EDITOR CONTROLS */
+#menuPanel input[type="file"] {
+    width: 100%;
+    color: #d9eaff;
+    font-size: 11px;
+    padding: 7px;
+    border: 1px solid #456b96;
+    border-radius: 6px;
+    background: #172b43;
+}
+#menuPanel select,
+#menuPanel input[type="range"] {
+    width: 100%;
+    accent-color: #269cff;
+}
+#menuPanel select {
+    min-height: 34px;
+    padding: 5px 8px;
+    border: 1px solid #456b96;
+    border-radius: 6px;
+    background: #172b43;
+    color: #fff;
+}
+.sample-note {
+    margin-top: 8px;
+    color: #91b5da;
+    font-size: 10px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+.sample-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    margin-top: 8px;
+}
+.sample-actions button,
+.wide-action {
+    min-height: 34px;
+    padding: 7px;
+    border: 1px solid #4d91cb;
+    border-radius: 7px;
+    background: #1d4770;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+}
+.wide-action {
+    width: 100%;
+    margin-top: 9px;
+}
+#assignedSamples {
+    padding: 8px;
+    margin-top: 8px;
+    border-radius: 7px;
+    background: #172b43;
+    white-space: pre-line;
+}
+
 /* LANDSCAPE */
 @media (orientation: landscape) {
     #app {
@@ -618,6 +678,96 @@ button {
         <button id="stop">STOP ALL SOUNDS</button>
     </section>
 
+
+    <section class="menu-section">
+        <h3>MIDI INPUT & VELOCITY</h3>
+        <label class="design-label" for="midiDevice">MIDI Input Device</label>
+        <select id="midiDevice"><option value="">Connect MIDI first</option></select>
+        <label class="design-label" for="midiChannel">MIDI Channel</label>
+        <select id="midiChannel">
+            <option value="0">All Channels (Omni)</option>
+            <option value="1">Channel 1</option>
+            <option value="2">Channel 2</option>
+            <option value="3">Channel 3</option>
+            <option value="4">Channel 4</option>
+            <option value="5">Channel 5</option>
+            <option value="6">Channel 6</option>
+            <option value="7">Channel 7</option>
+            <option value="8">Channel 8</option>
+            <option value="9">Channel 9</option>
+            <option value="10">Channel 10</option>
+            <option value="11">Channel 11</option>
+            <option value="12">Channel 12</option>
+            <option value="13">Channel 13</option>
+            <option value="14">Channel 14</option>
+            <option value="15">Channel 15</option>
+            <option value="16">Channel 16</option>
+        </select>
+        <label class="design-label" for="velocityCurve">Velocity Response</label>
+        <select id="velocityCurve">
+            <option value="linear">Linear</option>
+            <option value="soft">Soft</option>
+            <option value="hard">Hard</option>
+        </select>
+        <div id="midiMonitor" class="sample-note">Waiting for MIDI input…</div>
+    </section>
+
+    <section class="menu-section">
+        <h3>WAV SAMPLE LIBRARY</h3>
+        <label class="design-label" for="sampleUpload">Import WAV from phone</label>
+        <input id="sampleUpload" type="file" accept=".wav,audio/wav,audio/x-wav">
+        <div class="sample-note">Choose a WAV file from your phone Files / Gallery. Imported samples are saved on this device.</div>
+        <label class="design-label" for="sampleLibrary">Saved Samples</label>
+        <select id="sampleLibrary"><option value="">No samples imported</option></select>
+        <div class="sample-actions">
+            <button type="button" id="previewSample">PREVIEW</button>
+            <button type="button" id="deleteSample">DELETE</button>
+        </div>
+        <div id="sampleStatus" class="sample-note">No sample selected.</div>
+    </section>
+
+    <section class="menu-section">
+        <h3>PAD SAMPLE ASSIGNMENT & EDITOR</h3>
+        <label class="design-label" for="editPad">Select Pad</label>
+        <select id="editPad">
+            <option value="0">01 · KICK</option>
+            <option value="1">02 · SNARE</option>
+            <option value="2">03 · CLOSED HAT</option>
+            <option value="3">04 · OPEN HAT</option>
+            <option value="4">05 · LOW TOM</option>
+            <option value="5">06 · MID TOM</option>
+            <option value="6">07 · CRASH</option>
+            <option value="7">08 · RIDE</option>
+        </select>
+        <label class="design-label" for="editLayer">Sample Layer</label>
+        <select id="editLayer">
+            <option value="A">Layer A</option>
+            <option value="B">Layer B</option>
+        </select>
+        <button type="button" id="assignSample" class="wide-action">ASSIGN SELECTED WAV TO LAYER</button>
+        <div id="assignedSamples" class="sample-note">No samples assigned.</div>
+
+        <label class="design-label" for="layerMode">Two-layer playback</label>
+        <select id="layerMode">
+            <option value="both">Play A + B together</option>
+            <option value="velocity">Switch A / B by velocity</option>
+        </select>
+        <label class="design-label" for="velocitySplit">Velocity split (A below / B at or above)</label>
+        <input id="velocitySplit" type="range" min="1" max="127" value="90">
+        <div id="velocitySplitValue" class="design-value">90</div>
+
+        <label class="design-label" for="samplePitch">Pitch (semitones)</label>
+        <input id="samplePitch" type="range" min="-24" max="24" value="0">
+        <div id="samplePitchValue" class="design-value">0 semitones</div>
+        <label class="design-label" for="sampleVolume">Layer Volume</label>
+        <input id="sampleVolume" type="range" min="0" max="150" value="100">
+        <div id="sampleVolumeValue" class="design-value">100%</div>
+        <label class="design-label" for="samplePan">Pan</label>
+        <input id="samplePan" type="range" min="-100" max="100" value="0">
+        <div id="samplePanValue" class="design-value">Center</div>
+        <button type="button" id="savePadSettings" class="wide-action">SAVE PAD SETTINGS</button>
+    </section>
+
     <section class="menu-section" id="designSettings">
         <h3>PLAY SCREEN DESIGN</h3>
 
@@ -666,147 +816,11 @@ button {
 
 <div id="toast"></div>
 
+<script src="./sample-store.js"></script>
+<script src="./audio-engine.js"></script>
 <script src="./app.js"></script>
 
-<script>
-/* MENU */
-const menuPanel = document.getElementById("menuPanel");
 
-document.getElementById("menuButton").addEventListener("click", () => {
-    menuPanel.classList.add("open");
-});
-
-document.getElementById("closeMenu").addEventListener("click", () => {
-    menuPanel.classList.remove("open");
-});
-
-/* KIT NAVIGATION */
-const kits = [
-    { value: "studio", name: "STUDIO" },
-    { value: "electronic", name: "ELECTRONIC" },
-    { value: "world", name: "WORLD" },
-    { value: "sri-lankan", name: "SRI LANKAN" }
-];
-
-let currentKit = 0;
-
-const kitSelect = document.getElementById("kit");
-const kitName = document.getElementById("kitName");
-
-function changeKit(index) {
-    currentKit = (index + kits.length) % kits.length;
-
-    kitName.textContent = kits[currentKit].name;
-    kitSelect.value = kits[currentKit].value;
-
-    kitSelect.dispatchEvent(new Event("change", {
-        bubbles: true
-    }));
-}
-
-document.getElementById("previousKit").addEventListener("click", () => {
-    changeKit(currentKit - 1);
-});
-
-document.getElementById("nextKit").addEventListener("click", () => {
-    changeKit(currentKit + 1);
-});
-
-/* VOLUME LABEL */
-document.getElementById("volume").addEventListener("input", function() {
-    document.getElementById("volumeText").textContent = this.value + "%";
-});
-
-/* CUSTOM DESIGN SETTINGS - independent from audio and MIDI */
-const designDefaults = {
-    padColor: "#19385e",
-    borderColor: "#8fc5ff",
-    glow: 55,
-    radius: "4px",
-    background: "dark"
-};
-
-const designControls = {
-    padColor: document.getElementById("designPadColor"),
-    borderColor: document.getElementById("designBorderColor"),
-    glow: document.getElementById("designGlow"),
-    radius: document.getElementById("designRadius"),
-    background: document.getElementById("designBackground")
-};
-
-function applyDesign(settings) {
-    const root = document.documentElement;
-    root.style.setProperty("--pad-top", settings.padColor);
-    root.style.setProperty("--pad-border", settings.borderColor);
-    root.style.setProperty("--pad-glow", String(Number(settings.glow) / 100));
-    root.style.setProperty("--pad-radius", settings.radius);
-
-    const backgrounds = {
-        dark: "#070b13",
-        blue: "#07182b",
-        black: "#000000",
-        forest: "#071b16"
-    };
-    root.style.setProperty("--panel-bg", backgrounds[settings.background] || backgrounds.dark);
-
-    designControls.padColor.value = settings.padColor;
-    designControls.borderColor.value = settings.borderColor;
-    designControls.glow.value = settings.glow;
-    designControls.radius.value = settings.radius;
-    designControls.background.value = settings.background;
-    document.getElementById("designGlowValue").textContent = settings.glow + "%";
-}
-
-function readDesignControls() {
-    return {
-        padColor: designControls.padColor.value,
-        borderColor: designControls.borderColor.value,
-        glow: Number(designControls.glow.value),
-        radius: designControls.radius.value,
-        background: designControls.background.value
-    };
-}
-
-function saveAndApplyDesign() {
-    const settings = readDesignControls();
-    applyDesign(settings);
-    try {
-        localStorage.setItem("ERO_SOUND_PAD_DESIGN_V1", JSON.stringify(settings));
-    } catch (error) {
-        console.warn("Design settings could not be saved.", error);
-    }
-}
-
-try {
-    const savedDesign = localStorage.getItem("ERO_SOUND_PAD_DESIGN_V1");
-    applyDesign(savedDesign ? { ...designDefaults, ...JSON.parse(savedDesign) } : designDefaults);
-} catch (error) {
-    applyDesign(designDefaults);
-}
-
-Object.values(designControls).forEach(control => {
-    control.addEventListener("input", saveAndApplyDesign);
-    control.addEventListener("change", saveAndApplyDesign);
-});
-
-document.getElementById("resetDesign").addEventListener("click", () => {
-    applyDesign(designDefaults);
-    try {
-        localStorage.removeItem("ERO_SOUND_PAD_DESIGN_V1");
-    } catch (error) {}
-});
-
-/* LANDSCAPE ORIENTATION REQUEST */
-function requestLandscape() {
-    if (screen.orientation && screen.orientation.lock) {
-        screen.orientation.lock("landscape").catch(() => {});
-    }
-}
-
-document.addEventListener("pointerdown", requestLandscape, {
-    once: true
-});
-</script>
 
 </body>
 </html>
