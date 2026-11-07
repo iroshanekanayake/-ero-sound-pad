@@ -693,6 +693,75 @@ button {
         min-height: 18px;
     }
 }
+
+/* v1.7 FULL-SCREEN LANDSCAPE SETTINGS WORKSPACE */
+#menuPanel {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 12px 16px 24px !important;
+  background: #070d18 !important;
+  display: none;
+  box-sizing: border-box;
+}
+#menuPanel.open { display: block !important; }
+#menuPanel .menu-heading {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 12px;
+  margin: -12px -16px 12px;
+  background: rgba(7,13,24,.97);
+  border-bottom: 1px solid #315477;
+}
+#menuPanel .menu-section {
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 12px;
+  padding: 14px;
+  border: 1px solid #29496a;
+  border-radius: 12px;
+  background: linear-gradient(145deg,#101e31,#091321);
+}
+#menuPanel .menu-section h3 {
+  margin: 0 0 12px;
+  color: #9dccff;
+  font-size: 14px;
+  letter-spacing: .8px;
+}
+#menuPanel .menu-workspace {
+  display: grid;
+  grid-template-columns: minmax(240px, .85fr) minmax(360px, 1.6fr);
+  gap: 12px;
+  align-items: start;
+}
+#menuPanel .menu-workspace > .menu-section { margin-bottom: 0; }
+#menuPanel .pad-editor-section { scroll-margin-top: 72px; }
+#menuPanel .pad-picker-grid {
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 8px;
+}
+#menuPanel .pad-pick { min-height: 78px; cursor: pointer; }
+#menuPanel .pad-pick.selected {
+  border-color: #ffe600 !important;
+  box-shadow: 0 0 12px rgba(255,230,0,.42), inset 0 0 12px rgba(255,230,0,.12);
+}
+#menuPanel input, #menuPanel select, #menuPanel button { max-width: 100%; }
+#menuPanel .design-label { margin-top: 12px; }
+#menuPanel .sample-actions button,
+#menuPanel .wide-action { min-height: 40px; }
+@media (max-width: 760px) {
+  #menuPanel .menu-workspace { grid-template-columns: 1fr; }
+}
+
 </style>
 </head>
 
@@ -769,7 +838,7 @@ button {
 <div id="menuPanel">
 
     <div class="menu-heading">
-        <span>ERO SOUND PAD SETTINGS</span>
+        <span>ERO SOUND PAD · FULL SCREEN WORKSPACE</span>
         <button id="closeMenu">CLOSE ✕</button>
     </div>
 
@@ -835,8 +904,8 @@ button {
         <div id="sampleStatus" class="sample-note">No sample selected.</div>
     </section>
 
-    <section class="menu-section">
-        <h3>PAD SAMPLE ASSIGNMENT & EDITOR</h3>
+    <section class="menu-section pad-editor-section">
+        <h3 id="padEditorTitle">PAD EDITOR · SELECT A PAD</h3>
         <div class="pad-picker-heading">SELECT A PAD TO EDIT</div>
         <div class="sample-note">Tap one of the eight pads below. The selected pad will be highlighted in yellow.</div>
         <div id="padPicker" class="pad-picker-grid" aria-label="Choose one of eight pads"></div>

@@ -95,3 +95,5 @@ Files:
 - Added separate Layer A and Layer B volume sliders; both values are stored with each pad and therefore with each kit.
 - Unmapped MIDI notes are identified in the MIDI monitor to help diagnose controller note-number mismatches (use MIDI Learn for Pad 5 if the controller sends a different note).
 - Service worker cache bumped to v1.6.0.
+
+\n## v1.7 Full-screen settings and focused pad editor\n\n- Settings opens as a full-screen landscape workspace, separate from the playing display.\n- The Pad Editor has a prominent eight-pad selector. Selecting Pad 1–8 updates the same editor controls for that pad.\n- The editor heading identifies the currently selected pad.\n- Existing Play Screen, audio engine, MIDI mapping, sample storage, kit manager and Layer A/B controls are retained.\n- Service Worker cache version bumped to v1.7.0 to ensure the new interface is fetched.\n

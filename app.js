@@ -230,6 +230,10 @@
         $("editPad").value = String(selectedPad);
         renderPadPicker();
         renderAssignments();
+        const title = $("padEditorTitle");
+        if (title) title.textContent = `PAD ${String(selectedPad + 1).padStart(2,"0")} · ${padNames[selectedPad]} EDITOR`;
+        const controls = $("editLayer");
+        if (controls) controls.focus({ preventScroll: true });
       });
     });
   }
@@ -455,6 +459,7 @@
     renderMapping();
     renderAssignments();
     renderPadPicker();
+    if ($("padEditorTitle")) $("padEditorTitle").textContent = `PAD 01 · ${padNames[0]} EDITOR`;
     toast(`Kit "${kit.name}" loaded`);
   }
 
@@ -577,6 +582,8 @@
       selectedPad = Number(event.target.value);
       renderPadPicker();
       renderAssignments();
+      const title = $("padEditorTitle");
+      if (title) title.textContent = `PAD ${String(selectedPad + 1).padStart(2,"0")} · ${padNames[selectedPad]} EDITOR`;
     });
     $("editLayer").addEventListener("change", event => {
       selectedLayer = event.target.value;
@@ -611,7 +618,10 @@
 
   function initMenuAndKit() {
     const menuPanel = $("menuPanel");
-    $("menuButton").addEventListener("click", () => menuPanel.classList.add("open"));
+    $("menuButton").addEventListener("click", () => {
+      menuPanel.classList.add("open");
+      menuPanel.scrollTop = 0;
+    });
     $("closeMenu").addEventListener("click", () => menuPanel.classList.remove("open"));
 
     const builtInKits = [
