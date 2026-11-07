@@ -418,6 +418,55 @@ button {
     display: none !important;
 }
 
+
+/* EIGHT-PAD VISUAL EDITOR */
+.pad-picker-heading {
+    margin: 8px 0;
+    color: #8fc5ff;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1px;
+}
+.pad-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+    margin: 8px 0 14px;
+}
+.pad-pick {
+    min-width: 0;
+    min-height: 72px;
+    padding: 7px 3px;
+    border: 2px solid #6798c9;
+    border-radius: 9px;
+    background: linear-gradient(145deg,#1d4b78,#0b1b30);
+    color: #eef7ff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: inset 0 0 12px rgba(80,160,255,.12);
+}
+.pad-pick.selected {
+    border-color: #ffe600;
+    box-shadow: 0 0 10px rgba(255,230,0,.35), inset 0 0 15px rgba(255,230,0,.10);
+}
+.pad-pick-number {
+    font-size: 10px;
+    color: #9bcaff;
+}
+.pad-pick strong {
+    font-size: 11px;
+    line-height: 1.15;
+    text-align: center;
+}
+.pad-pick small {
+    font-size: 7px;
+    color: #a9c9eb;
+    letter-spacing: .3px;
+}
+
 /* BULK IMPORT AND KIT MANAGER */
 #sampleUploadMultiple, #kitNameInput {
     display: block;
@@ -767,7 +816,7 @@ button {
         <div class="sample-note">Import one WAV file.</div>
         <label class="design-label" for="sampleUploadMultiple">Import multiple WAV files together</label>
         <input id="sampleUploadMultiple" type="file" accept=".wav,audio/wav,audio/x-wav" multiple>
-        <div class="sample-note">Select several WAV files in one file-picker action. They are all added to the Sample Library; assign them to pads afterwards.</div>
+        <div class="sample-note">Select several WAV files in one file-picker action. The app checks the WAV file header too, so Android file providers that report unusual file types can still be accepted. After import, choose Pad 1–8 below and assign its sample.</div>
         <label class="design-label" for="sampleLibrary">Saved Samples</label>
         <select id="sampleLibrary"><option value="">No samples imported</option></select>
         <div class="sample-actions">
@@ -779,7 +828,9 @@ button {
 
     <section class="menu-section">
         <h3>PAD SAMPLE ASSIGNMENT & EDITOR</h3>
-        <label class="design-label" for="editPad">Select Pad</label>
+        <div class="pad-picker-heading">SELECT A PAD TO EDIT</div>
+        <div id="padPicker" class="pad-picker-grid" aria-label="Choose one of eight pads"></div>
+        <label class="design-label" for="editPad">Pad selection (list)</label>
         <select id="editPad">
             <option value="0">01 · KICK</option>
             <option value="1">02 · SNARE</option>

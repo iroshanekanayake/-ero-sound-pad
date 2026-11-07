@@ -84,3 +84,5 @@ Files:
 - Load and delete saved kits.
 - Deleting a kit does not delete its WAV samples.
 - Existing v1.2 sample storage is preserved; IndexedDB is upgraded from version 1 to 2.
+
+\n## v1.4 bulk import fix and visual pad editor\n\n- Bulk WAV import validates RIFF/WAVE headers as well as file names and MIME types, improving compatibility with Android file providers.\n- Import errors are shown in the sample status area.\n- Added an eight-pad visual selector to the Pad Sample Assignment & Editor section. Tap Pad 1–8 to switch the editing controls to that pad.\n- The existing pad selector dropdown remains as a secondary selection method.\n

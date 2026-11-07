@@ -207,6 +207,28 @@
     renderAssignments();
   }
 
+  function renderPadPicker() {
+    const host = $("padPicker");
+    if (!host) return;
+    host.innerHTML = padNames.map((name, index) => {
+      const active = index === selectedPad ? " selected" : "";
+      const assigned = config.pads[index].layers.A.sampleId || config.pads[index].layers.B.sampleId;
+      return `<button type="button" class="pad-pick${active}" data-edit-pad="${index}">
+        <span class="pad-pick-number">${String(index + 1).padStart(2, "0")}</span>
+        <strong>${name}</strong>
+        <small>${assigned ? "SAMPLE ASSIGNED" : "EMPTY PAD"}</small>
+      </button>`;
+    }).join("");
+    host.querySelectorAll("[data-edit-pad]").forEach(button => {
+      button.addEventListener("click", () => {
+        selectedPad = Number(button.dataset.editPad);
+        $("editPad").value = String(selectedPad);
+        renderPadPicker();
+        renderAssignments();
+      });
+    });
+  }
+
   function currentLayerConfig() {
     return config.pads[selectedPad].layers[selectedLayer];
   }
@@ -275,13 +297,28 @@
     $("sampleUpload").value = "";
   }
 
+  async function isWavFile(file) {
+    const nameLooksWav = /\.wav$/i.test(file.name || "");
+    const mimeLooksWav = /^(audio\/(wav|x-wav|wave|vnd\.wave)|application\/octet-stream)$/i.test(file.type || "");
+    if (nameLooksWav || mimeLooksWav) {
+      const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+      const riff = head.length >= 12 &&
+        String.fromCharCode(...head.slice(0, 4)) === "RIFF" &&
+        String.fromCharCode(...head.slice(8, 12)) === "WAVE";
+      return riff || nameLooksWav || /^(audio\/(wav|x-wav|wave|vnd\.wave))$/i.test(file.type || "");
+    }
+    // Android file providers sometimes omit both the extension and MIME type.
+    const head = new Uint8Array(await file.slice(0, 12).arrayBuffer());
+    return head.length >= 12 &&
+      String.fromCharCode(...head.slice(0, 4)) === "RIFF" &&
+      String.fromCharCode(...head.slice(8, 12)) === "WAVE";
+  }
+
   async function importMultipleWavs(fileList) {
     const files = Array.from(fileList || []);
     if (!files.length) return;
-    const valid = files.filter(file =>
-      /\.wav$/i.test(file.name) ||
-      ["audio/wav", "audio/x-wav", "audio/wave"].includes(file.type)
-    );
+    const checks = await Promise.all(files.map(async file => ({ file, valid: await isWavFile(file) })));
+    const valid = checks.filter(item => item.valid).map(item => item.file);
     const rejected = files.length - valid.length;
     if (!valid.length) {
       toast("Select WAV files only");
@@ -319,7 +356,8 @@
       toast(`${imported} WAV sample(s) imported`);
     } catch (error) {
       console.error(error);
-      toast(`Bulk import stopped after ${imported} file(s). Check phone storage.`);
+      $("sampleStatus").textContent = `Import error: ${error && error.message ? error.message : "Unknown storage error"}. Imported ${imported} file(s).`;
+      toast(`Import stopped after ${imported} file(s).`);
       await refreshSamples();
     }
     $("sampleUploadMultiple").value = "";
@@ -399,6 +437,7 @@
       saveConfig();
       renderMapping();
       renderAssignments();
+      renderPadPicker();
       $("kitNameInput").value = kit.name;
       toast(`Kit "${kit.name}" loaded`);
     } catch (error) {
@@ -444,6 +483,7 @@
     config.pads[selectedPad].layers[selectedLayer].sampleId = selectedSampleId;
     saveConfig();
     renderAssignments();
+    renderPadPicker();
     toast(`Assigned ${record.name} to ${padNames[selectedPad]} Layer ${selectedLayer}`);
   }
 
@@ -497,6 +537,7 @@
     $("deleteSample").addEventListener("click", deleteSelectedSample);
     $("editPad").addEventListener("change", event => {
       selectedPad = Number(event.target.value);
+      renderPadPicker();
       renderAssignments();
     });
     $("editLayer").addEventListener("change", event => {
@@ -601,6 +642,7 @@
     initMenuAndKit();
     renderMapping();
     renderAssignments();
+    renderPadPicker();
     try {
       await refreshSamples();
       await refreshKits();
