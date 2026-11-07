@@ -1,1 +1,80 @@
-const C='ero-sound-pad-v010',A=['./','./index.html','./css/style.css','./js/app.js','./manifest.json','./assets/icons/icon.svg'];self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(a=>Promise.all(a.filter(x=>x!==C).map(x=>caches.delete(x))))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(x=>{const copy=x.clone();caches.open(C).then(c=>c.put(e.request,copy));return x}).catch(()=>caches.match('./index.html'))))});
+/* ERO SOUND PAD PWA Service Worker */
+'use strict';
+
+const CACHE_NAME = 'ero-sound-pad-v1.1.0';
+const APP_FILES = [
+  './',
+  './index.html',
+  './manifest.json',
+  './app.js',
+  './style.css',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    // Cache each resource separately so one missing optional file cannot
+    // prevent the service worker from installing.
+    await Promise.all(APP_FILES.map(async path => {
+      try {
+        const response = await fetch(path, { cache: 'reload' });
+        if (response.ok) await cache.put(path, response);
+      } catch (error) {
+        // The main HTML and manifest are still validated by the browser.
+      }
+    }));
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys
+      .filter(key => key.startsWith('ero-sound-pad-') && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          await cache.put('./index.html', response.clone());
+        }
+        return response;
+      } catch (error) {
+        return (await caches.match('./index.html')) ||
+               (await caches.match('./'));
+      }
+    })());
+    return;
+  }
+
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    try {
+      const response = await fetch(request);
+      if (response && response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, response.clone()).catch(() => {});
+      }
+      return response;
+    } catch (error) {
+      return Response.error();
+    }
+  })());
+});
