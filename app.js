@@ -13,6 +13,8 @@
   let selectedSampleId = "";
   let selectedPad = 0;
   let selectedLayer = "A";
+  let kits = [];
+  let selectedKitId = "";
 
   const config = {
     notes: defaultNotes.slice(),
@@ -273,6 +275,155 @@
     $("sampleUpload").value = "";
   }
 
+  async function importMultipleWavs(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    const valid = files.filter(file =>
+      /\.wav$/i.test(file.name) ||
+      ["audio/wav", "audio/x-wav", "audio/wave"].includes(file.type)
+    );
+    const rejected = files.length - valid.length;
+    if (!valid.length) {
+      toast("Select WAV files only");
+      $("sampleUploadMultiple").value = "";
+      return;
+    }
+
+    let imported = 0;
+    const importedIds = [];
+    try {
+      for (const file of valid) {
+        const data = await file.arrayBuffer();
+        const id = (crypto.randomUUID ? crypto.randomUUID() :
+          "s" + Date.now() + Math.random().toString(16).slice(2));
+        await window.EROSampleStore.put({
+          id,
+          name: file.name,
+          type: file.type || "audio/wav",
+          size: file.size,
+          addedAt: Date.now(),
+          data
+        });
+        importedIds.push(id);
+        imported++;
+        $("sampleStatus").textContent = `Importing ${imported} / ${valid.length}: ${file.name}`;
+      }
+      await refreshSamples();
+      if (importedIds.length) {
+        selectedSampleId = importedIds[0];
+        $("sampleLibrary").value = selectedSampleId;
+        $("sampleStatus").textContent =
+          `${imported} WAV samples imported and saved on this device.` +
+          (rejected ? ` ${rejected} non-WAV file(s) skipped.` : "");
+      }
+      toast(`${imported} WAV sample(s) imported`);
+    } catch (error) {
+      console.error(error);
+      toast(`Bulk import stopped after ${imported} file(s). Check phone storage.`);
+      await refreshSamples();
+    }
+    $("sampleUploadMultiple").value = "";
+  }
+
+  async function refreshKits() {
+    kits = await window.EROSampleStore.allKits();
+    kits.sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    const select = $("savedKits");
+    const old = selectedKitId;
+    select.innerHTML = "";
+    if (!kits.length) {
+      select.add(new Option("No saved kits yet", ""));
+      selectedKitId = "";
+    } else {
+      kits.forEach(kit => select.add(new Option(kit.name, kit.id)));
+      selectedKitId = kits.some(kit => kit.id === old) ? old : kits[0].id;
+      select.value = selectedKitId;
+    }
+    const count = kits.length;
+    $("kitLibraryStatus").textContent = count
+      ? `${count} saved kit${count === 1 ? "" : "s"} on this device.`
+      : "Save your current eight-pad setup as a named kit.";
+  }
+
+  async function saveCurrentKit() {
+    const name = $("kitNameInput").value.trim();
+    if (!name) {
+      toast("Enter a name for this kit first");
+      $("kitNameInput").focus();
+      return;
+    }
+    try {
+      const now = Date.now();
+      const existing = kits.find(kit => kit.name.toLowerCase() === name.toLowerCase());
+      const kit = {
+        id: existing ? existing.id : (crypto.randomUUID ? crypto.randomUUID() : "k" + now + Math.random().toString(16).slice(2)),
+        name,
+        notes: config.notes.slice(),
+        channel: config.channel,
+        velocityCurve: config.velocityCurve,
+        pads: JSON.parse(JSON.stringify(config.pads)),
+        createdAt: existing ? existing.createdAt : now,
+        updatedAt: now
+      };
+      await window.EROSampleStore.putKit(kit);
+      selectedKitId = kit.id;
+      await refreshKits();
+      $("savedKits").value = kit.id;
+      toast(`Kit "${name}" saved`);
+    } catch (error) {
+      console.error(error);
+      toast("Could not save kit on this device");
+    }
+  }
+
+  async function loadSelectedKit() {
+    if (!selectedKitId) return toast("Select a saved kit first");
+    try {
+      const kit = await window.EROSampleStore.getKit(selectedKitId);
+      if (!kit) return toast("Saved kit was not found");
+      if (Array.isArray(kit.notes) && kit.notes.length === 8) config.notes = kit.notes.slice();
+      if (Array.isArray(kit.pads) && kit.pads.length === 8) {
+        config.pads = kit.pads.map(pad => ({
+          layerMode: pad.layerMode === "velocity" ? "velocity" : "both",
+          velocitySplit: Number(pad.velocitySplit) || 90,
+          layers: {
+            A: { sampleId: pad.layers?.A?.sampleId || "", pitch: Number(pad.layers?.A?.pitch) || 0, volume: Number(pad.layers?.A?.volume ?? 100), pan: Number(pad.layers?.A?.pan) || 0 },
+            B: { sampleId: pad.layers?.B?.sampleId || "", pitch: Number(pad.layers?.B?.pitch) || 0, volume: Number(pad.layers?.B?.volume ?? 100), pan: Number(pad.layers?.B?.pan) || 0 }
+          }
+        }));
+      }
+      config.channel = Number(kit.channel) || 0;
+      config.velocityCurve = kit.velocityCurve || "linear";
+      $("midiChannel").value = String(config.channel);
+      $("velocityCurve").value = config.velocityCurve;
+      saveConfig();
+      renderMapping();
+      renderAssignments();
+      $("kitNameInput").value = kit.name;
+      toast(`Kit "${kit.name}" loaded`);
+    } catch (error) {
+      console.error(error);
+      toast("Could not load this kit");
+    }
+  }
+
+  async function deleteSelectedKit() {
+    if (!selectedKitId) return toast("Select a saved kit first");
+    const kit = kits.find(item => item.id === selectedKitId);
+    if (!kit) return;
+    if (!window.confirm(`Delete kit "${kit.name}"? The WAV samples will remain in the sample library.`)) return;
+    try {
+      await window.EROSampleStore.removeKit(selectedKitId);
+      selectedKitId = "";
+      await refreshKits();
+      $("kitNameInput").value = "";
+      toast("Kit deleted. Original WAV samples were kept.");
+    } catch (error) {
+      console.error(error);
+      toast("Could not delete kit");
+    }
+  }
+
   async function deleteSelectedSample() {
     if (!selectedSampleId) return toast("Select a sample first");
     const id = selectedSampleId;
@@ -332,6 +483,7 @@
     });
 
     $("sampleUpload").addEventListener("change", event => importWav(event.target.files[0]));
+    $("sampleUploadMultiple").addEventListener("change", event => importMultipleWavs(event.target.files));
     $("sampleLibrary").addEventListener("change", event => {
       selectedSampleId = event.target.value;
       const sample = samples.find(s => s.id === selectedSampleId);
@@ -370,6 +522,11 @@
       $(input).addEventListener("change", saveEditorValues);
     });
     $("layerMode").addEventListener("change", saveEditorValues);
+
+    $("saveKit").addEventListener("click", saveCurrentKit);
+    $("savedKits").addEventListener("change", event => { selectedKitId = event.target.value; });
+    $("loadKit").addEventListener("click", loadSelectedKit);
+    $("deleteKit").addEventListener("click", deleteSelectedKit);
   }
 
   function initMenuAndKit() {
@@ -446,8 +603,10 @@
     renderAssignments();
     try {
       await refreshSamples();
+      await refreshKits();
     } catch (error) {
       $("sampleStatus").textContent = "Local sample storage is unavailable in this browser.";
+      $("kitLibraryStatus").textContent = "Local kit storage is unavailable in this browser.";
     }
     updateMidiStatus();
     document.addEventListener("pointerdown", () => {

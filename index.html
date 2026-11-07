@@ -418,6 +418,54 @@ button {
     display: none !important;
 }
 
+/* BULK IMPORT AND KIT MANAGER */
+#sampleUploadMultiple, #kitNameInput {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    margin: 7px 0;
+    padding: 9px;
+    border: 1px solid #456b96;
+    border-radius: 7px;
+    background: #172b43;
+    color: white;
+    font-size: 12px;
+}
+#kitManager .sample-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+#kitManager .sample-actions button {
+    flex: 1;
+    min-height: 34px;
+    border: 1px solid #5685b2;
+    border-radius: 7px;
+    background: #1d4770;
+    color: white;
+    font-size: 11px;
+    font-weight: bold;
+}
+#kitManager .wide-action {
+    width: 100%;
+    min-height: 36px;
+    margin: 7px 0;
+    border: 1px solid #6d9bc8;
+    border-radius: 7px;
+    background: #214b70;
+    color: white;
+    font-weight: bold;
+}
+#kitManager select {
+    width: 100%;
+    min-height: 36px;
+    padding: 6px;
+    border: 1px solid #456b96;
+    border-radius: 7px;
+    background: #172b43;
+    color: white;
+}
+
 /* DESIGN SETTINGS CONTROLS */
 .design-label {
     display: block;
@@ -716,7 +764,10 @@ button {
         <h3>WAV SAMPLE LIBRARY</h3>
         <label class="design-label" for="sampleUpload">Import WAV from phone</label>
         <input id="sampleUpload" type="file" accept=".wav,audio/wav,audio/x-wav">
-        <div class="sample-note">Choose a WAV file from your phone Files / Gallery. Imported samples are saved on this device.</div>
+        <div class="sample-note">Import one WAV file.</div>
+        <label class="design-label" for="sampleUploadMultiple">Import multiple WAV files together</label>
+        <input id="sampleUploadMultiple" type="file" accept=".wav,audio/wav,audio/x-wav" multiple>
+        <div class="sample-note">Select several WAV files in one file-picker action. They are all added to the Sample Library; assign them to pads afterwards.</div>
         <label class="design-label" for="sampleLibrary">Saved Samples</label>
         <select id="sampleLibrary"><option value="">No samples imported</option></select>
         <div class="sample-actions">
@@ -766,6 +817,21 @@ button {
         <input id="samplePan" type="range" min="-100" max="100" value="0">
         <div id="samplePanValue" class="design-value">Center</div>
         <button type="button" id="savePadSettings" class="wide-action">SAVE PAD SETTINGS</button>
+    </section>
+
+    <section class="menu-section" id="kitManager">
+        <h3>MY SOUND KITS</h3>
+        <label class="design-label" for="kitNameInput">Kit name</label>
+        <input id="kitNameInput" type="text" maxlength="40" placeholder="e.g. My Acoustic Kit">
+        <button type="button" id="saveKit" class="wide-action">SAVE CURRENT 8-PAD KIT</button>
+        <label class="design-label" for="savedKits">Saved kits on this device</label>
+        <select id="savedKits"><option value="">No saved kits yet</option></select>
+        <div class="sample-actions">
+            <button type="button" id="loadKit">LOAD KIT</button>
+            <button type="button" id="deleteKit">DELETE KIT</button>
+        </div>
+        <div id="kitLibraryStatus" class="sample-note">Save your current eight-pad setup as a named kit.</div>
+        <div class="sample-note">A kit stores all eight pads, both sample layers, MIDI note mappings, velocity settings, pitch, volume and pan. Deleting a kit does not delete its original WAV samples.</div>
     </section>
 
     <section class="menu-section" id="designSettings">

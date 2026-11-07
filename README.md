@@ -72,3 +72,15 @@ Files:
 5. Close settings and tap that pad.
 6. Assign a second WAV to Layer B and test A+B / velocity switch.
 7. Connect a MIDI controller if supported, test MIDI Learn and velocity monitor.
+
+
+## v1.3 Kit Manager and bulk WAV import
+
+- Select multiple WAV files at once from the phone file picker.
+- Each WAV is stored in the local IndexedDB sample library.
+- Save the current eight-pad setup as a named kit.
+- Kits include MIDI note mapping, velocity curve/channel, both A/B sample layers,
+  layer mode, velocity split, pitch, volume, and pan.
+- Load and delete saved kits.
+- Deleting a kit does not delete its WAV samples.
+- Existing v1.2 sample storage is preserved; IndexedDB is upgraded from version 1 to 2.
