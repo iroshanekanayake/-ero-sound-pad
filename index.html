@@ -767,6 +767,15 @@ button {
   #menuPanel .menu-workspace { grid-template-columns: 1fr; }
 }
 
+
+/* v2.0 BACKING TRACK PLAYER */
+#backingTrackSection input[type="range"] { width:100%; accent-color:#269cff; }
+#backingTrackAudio { display:none; }
+.backing-controls { display:flex; gap:7px; }
+.backing-controls button { flex:1; min-width:0; }
+.backing-time { display:flex; justify-content:space-between; font-variant-numeric:tabular-nums; }
+#backingTrackName { overflow-wrap:anywhere; }
+
 </style>
 </head>
 
@@ -853,6 +862,26 @@ button {
         <div id="volumeText">80%</div>
     </section>
 
+
+    <section class="menu-section" id="backingTrackSection">
+        <h3>BACKING TRACK PLAYER</h3>
+        <label class="design-label" for="backingTrackFile">IMPORT SONG FROM PHONE</label>
+        <input id="backingTrackFile" type="file" accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac">
+        <div id="backingTrackName" class="sample-note">No song selected. Imported songs are saved on this device.</div>
+        <div class="sample-actions backing-controls">
+            <button type="button" id="backingPlay">PLAY</button>
+            <button type="button" id="backingPause">PAUSE</button>
+            <button type="button" id="backingStop">STOP</button>
+        </div>
+        <label class="design-label" for="backingSeek">SONG POSITION</label>
+        <input id="backingSeek" type="range" min="0" max="1000" value="0" step="1">
+        <div class="sample-note backing-time"><span id="backingCurrent">00:00</span><span id="backingDuration">00:00</span></div>
+        <label class="design-label" for="backingVolume">SONG VOLUME</label>
+        <input id="backingVolume" type="range" min="0" max="100" value="70">
+        <div id="backingVolumeText" class="design-value">70%</div>
+        <div class="sample-note">Song playback continues when this menu is closed. Drum pad volume is controlled separately.</div>
+        <audio id="backingTrackAudio" preload="metadata"></audio>
+    </section>
 
     <section class="menu-section">
         <h3>MIDI INPUT & VELOCITY</h3>

@@ -620,6 +620,94 @@
     toast(`Assigned ${record.name} to ${padNames[selectedPad]} Layer ${selectedLayer}`);
   }
 
+  let backingTrackUrl = "";
+  let backingTrackId = "";
+
+  function formatTrackTime(seconds) {
+    if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return String(mins).padStart(2,"0") + ":" + String(secs).padStart(2,"0");
+  }
+
+  function setBackingTrackSource(blob, name, id) {
+    const audio = $("backingTrackAudio");
+    if (backingTrackUrl) URL.revokeObjectURL(backingTrackUrl);
+    backingTrackUrl = URL.createObjectURL(blob);
+    backingTrackId = id || "";
+    audio.src = backingTrackUrl;
+    audio.load();
+    $("backingTrackName").textContent = name || "Selected song";
+    $("backingSeek").value = 0;
+    $("backingCurrent").textContent = "00:00";
+    $("backingDuration").textContent = "00:00";
+  }
+
+  async function initBackingTrackPlayer() {
+    const audio = $("backingTrackAudio");
+    const fileInput = $("backingTrackFile");
+    const volume = $("backingVolume");
+    const savedVolume = Number(localStorage.getItem("ERO_BACKING_TRACK_VOLUME"));
+    if (Number.isFinite(savedVolume) && savedVolume >= 0 && savedVolume <= 100) volume.value = String(savedVolume);
+    audio.volume = Number(volume.value) / 100;
+    $("backingVolumeText").textContent = volume.value + "%";
+
+    fileInput.addEventListener("change", async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      if (!file.type.startsWith("audio/") && !/\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(file.name)) {
+        toast("Please select a supported audio file"); fileInput.value = ""; return;
+      }
+      try {
+        $("backingTrackName").textContent = "Saving song to this device…";
+        const id = "track-main";
+        await window.EROSampleStore.putBackingTrack({ id, name:file.name, type:file.type || "audio/mpeg", size:file.size, data:file });
+        setBackingTrackSource(file, file.name, id);
+        toast("Song imported and saved on this device");
+      } catch (error) {
+        console.error("Backing track import:", error);
+        $("backingTrackName").textContent = "Song import failed: " + (error.message || "Storage unavailable");
+        toast("Could not save this song. Check available storage.");
+      } finally { fileInput.value = ""; }
+    });
+
+    $("backingPlay").addEventListener("click", async () => {
+      if (!audio.src) return toast("Import a song first");
+      try { await audio.play(); }
+      catch (error) { toast("Song playback could not start: " + (error.message || "Tap Play again")); }
+    });
+    $("backingPause").addEventListener("click", () => audio.pause());
+    $("backingStop").addEventListener("click", () => { audio.pause(); audio.currentTime = 0; });
+    volume.addEventListener("input", () => {
+      audio.volume = Number(volume.value) / 100;
+      $("backingVolumeText").textContent = volume.value + "%";
+      try { localStorage.setItem("ERO_BACKING_TRACK_VOLUME", volume.value); } catch (_) {}
+    });
+    $("backingSeek").addEventListener("input", () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = (Number($("backingSeek").value) / 1000) * audio.duration;
+      }
+    });
+    audio.addEventListener("loadedmetadata", () => {
+      $("backingDuration").textContent = formatTrackTime(audio.duration);
+    });
+    audio.addEventListener("timeupdate", () => {
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        $("backingSeek").value = String(Math.round((audio.currentTime / audio.duration) * 1000));
+      }
+      $("backingCurrent").textContent = formatTrackTime(audio.currentTime);
+    });
+    audio.addEventListener("error", () => {
+      if (audio.src) $("backingTrackName").textContent = "This audio format could not be played on this device.";
+    });
+
+    try {
+      const tracks = await window.EROSampleStore.allBackingTracks();
+      const track = tracks.find(item => item.id === "track-main");
+      if (track && track.data) setBackingTrackSource(track.data, track.name, track.id);
+    } catch (error) { console.warn("Saved backing track unavailable:", error); }
+  }
+
   function initEvents() {
     document.querySelectorAll("[data-pad]").forEach(button => {
       button.addEventListener("pointerdown", event => {
@@ -771,6 +859,7 @@
     loadConfig();
     initEvents();
     initMenuAndKit();
+    initBackingTrackPlayer().catch(error => console.warn("Backing track player:", error));
     renderMapping();
     renderAssignments();
     renderPadPicker();

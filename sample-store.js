@@ -2,7 +2,7 @@
 (() => {
   "use strict";
   const DB_NAME = "ero-sound-pad-samples";
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   let dbPromise;
 
   function openDB() {
@@ -16,6 +16,9 @@
         }
         if (!db.objectStoreNames.contains("kits")) {
           db.createObjectStore("kits", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("backingTracks")) {
+          db.createObjectStore("backingTracks", { keyPath: "id" });
         }
       };
       req.onsuccess = () => resolve(req.result);
@@ -103,5 +106,44 @@
     });
   }
 
-  window.EROSampleStore = { put, get, all, remove, putKit, getKit, allKits, removeKit };
+  async function putBackingTrack(track) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("backingTracks", "readwrite");
+      tx.objectStore("backingTracks").put(track);
+      tx.oncomplete = () => resolve(track);
+      tx.onerror = () => reject(tx.error || new Error("Backing track save failed"));
+      tx.onabort = () => reject(tx.error || new Error("Backing track save was aborted"));
+    });
+  }
+
+  async function getBackingTrack(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction("backingTracks", "readonly").objectStore("backingTracks").get(id);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function allBackingTracks() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction("backingTracks", "readonly").objectStore("backingTracks").getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function removeBackingTrack(id) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("backingTracks", "readwrite");
+      tx.objectStore("backingTracks").delete(id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error || new Error("Backing track delete failed"));
+    });
+  }
+
+  window.EROSampleStore = { put, get, all, remove, putKit, getKit, allKits, removeKit, putBackingTrack, getBackingTrack, allBackingTracks, removeBackingTrack };
 })();

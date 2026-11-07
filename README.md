@@ -116,3 +116,15 @@ Files:
 - Service Worker cache version bumped to v1.9.0.
 
 ZIP import supports standard ZIP entries compressed with Store or Deflate. ZIP64 archives and unsupported compression methods are not supported. Test with a small ZIP pack on the target Android phone before importing a very large library.
+
+
+## v2.0.0 — Backing Track Player
+- Added a separate Backing Track Player inside the settings menu.
+- Import one audio song from the phone (browser/device-supported formats such as MP3 and WAV).
+- Imported song is stored locally in IndexedDB and restored on next app launch.
+- Play, pause, stop, seek, and independent song volume controls.
+- Song playback is independent from the drum sample engine and continues when the settings menu is closed.
+- Added a dedicated IndexedDB backingTracks store without changing existing sample or kit records.
+- Service worker cache version updated to v2.0.0.
+
+Note: actual codec support and long-duration background playback depend on the Android browser/device. Test MP3/WAV playback on the target phone.
