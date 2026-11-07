@@ -103,3 +103,16 @@ Files:
 - Added sample folder creation and folder filtering.
 - Bulk WAV import now saves all selected WAV files into the currently selected folder. Existing samples remain in their existing records and are treated as Unfiled.
 - Existing audio engine, MIDI, pad editor, and kit manager code retained.
+
+
+## v1.9 — ZIP Sample Pack Import
+
+- Removed the All Sounds / Stop All Sounds settings card as requested.
+- Removed single-WAV upload and manual folder creation controls.
+- Added ZIP sample-pack import. WAV files are extracted in-browser and stored in IndexedDB.
+- ZIP directory paths are preserved as sample folder names; WAV files at the ZIP root are stored in Unsorted.
+- Folder browsing is populated automatically from imported ZIP contents.
+- Existing audio engine, MIDI mapping, kits, sample assignment and pad editor code are retained.
+- Service Worker cache version bumped to v1.9.0.
+
+ZIP import supports standard ZIP entries compressed with Store or Deflate. ZIP64 archives and unsupported compression methods are not supported. Test with a small ZIP pack on the target Android phone before importing a very large library.

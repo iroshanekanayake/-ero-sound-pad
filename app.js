@@ -195,20 +195,15 @@
     $("midiTag").textContent = count ? count + " INPUT(S) FOUND" : "NO DEVICE";
   }
 
-  function getSampleFolders() {
-    try { return JSON.parse(localStorage.getItem("eroSoundPadFolders") || "[]"); }
-    catch (_) { return []; }
-  }
-
   function refreshFolderPicker() {
     const picker = $("sampleFolder");
     if (!picker) return;
-    const current = picker.value || "All";
-    const names = [...new Set([...getSampleFolders(), ...samples.map(s => s.folder).filter(Boolean), ...(samples.some(s => !s.folder) ? ["Unfiled"] : [])])].sort((a,b) => a.localeCompare(b));
+    const current = picker.value || "";
+    const names = [...new Set(samples.map(s => s.folder).filter(Boolean))].sort((a,b) => a.localeCompare(b));
     picker.innerHTML = "";
-    picker.add(new Option("All Folders", "All"));
+    picker.add(new Option("Select a folder", ""));
     names.forEach(name => picker.add(new Option(name, name)));
-    picker.value = names.includes(current) ? current : "All";
+    picker.value = names.includes(current) ? current : (names[0] || "");
   }
 
   async function refreshSamples() {
@@ -217,8 +212,8 @@
     refreshFolderPicker();
     const select = $("sampleLibrary");
     const old = selectedSampleId;
-    const folder = $("sampleFolder") ? $("sampleFolder").value : "All";
-    const visible = folder === "All" ? samples : samples.filter(sample => (sample.folder || "Unfiled") === folder);
+    const folder = $("sampleFolder") ? $("sampleFolder").value : "";
+    const visible = folder ? samples.filter(sample => (sample.folder || "Unsorted") === folder) : samples;
     select.innerHTML = "";
     if (!visible.length) {
       select.add(new Option("No samples in this folder", ""));
@@ -229,6 +224,80 @@
       select.value = selectedSampleId;
     }
     renderAssignments();
+  }
+
+  async function unzipEntries(file) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const sig = (offset) => view.getUint32(offset, true);
+    let eocd = -1;
+    for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65558); i--) {
+      if (sig(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error("Invalid ZIP file or ZIP64 archive is not supported");
+    const count = view.getUint16(eocd + 10, true);
+    let offset = view.getUint32(eocd + 16, true);
+    const entries = [];
+    const decoder = new TextDecoder();
+    for (let i = 0; i < count; i++) {
+      if (sig(offset) !== 0x02014b50) throw new Error("ZIP directory is damaged");
+      const method = view.getUint16(offset + 10, true);
+      const compressedSize = view.getUint32(offset + 20, true);
+      const nameLength = view.getUint16(offset + 28, true);
+      const extraLength = view.getUint16(offset + 30, true);
+      const commentLength = view.getUint16(offset + 32, true);
+      const localOffset = view.getUint32(offset + 42, true);
+      const name = decoder.decode(bytes.slice(offset + 46, offset + 46 + nameLength)).replace(/\\/g, "/");
+      offset += 46 + nameLength + extraLength + commentLength;
+      if (!name || name.endsWith("/") || !/\.wav$/i.test(name)) continue;
+      if (name.startsWith("/") || name.split("/").some(part => part === "..")) continue;
+      if (sig(localOffset) !== 0x04034b50) continue;
+      const localNameLength = view.getUint16(localOffset + 26, true);
+      const localExtraLength = view.getUint16(localOffset + 28, true);
+      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+      const compressed = bytes.slice(dataStart, dataStart + compressedSize);
+      let data;
+      if (method === 0) data = compressed.buffer;
+      else if (method === 8 && typeof DecompressionStream !== "undefined") {
+        const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        data = await new Response(stream).arrayBuffer();
+      } else { throw new Error("This ZIP compression method is not supported on this phone"); }
+      const parts = name.split("/").filter(Boolean);
+      const sampleName = parts.pop();
+      const folder = parts.length ? parts.join("/") : "Unsorted";
+      const head = new Uint8Array(data, 0, Math.min(12, data.byteLength));
+      const isRiff = head.length >= 12 && String.fromCharCode(...head.slice(0,4)) === "RIFF" && String.fromCharCode(...head.slice(8,12)) === "WAVE";
+      if (!isRiff) continue;
+      entries.push({ name: sampleName, folder, data });
+    }
+    return entries;
+  }
+
+  async function importSampleZip(file) {
+    if (!file) return;
+    if (!/\.zip$/i.test(file.name || "")) { toast("Please choose a ZIP sample pack"); return; }
+    const input = $("sampleZipUpload");
+    try {
+      $("sampleStatus").textContent = "Reading ZIP sample pack…";
+      const entries = await unzipEntries(file);
+      if (!entries.length) throw new Error("No valid WAV files were found inside this ZIP");
+      let imported = 0;
+      for (const entry of entries) {
+        const id = (crypto.randomUUID ? crypto.randomUUID() : "s" + Date.now() + Math.random().toString(16).slice(2));
+        await window.EROSampleStore.put({ id, name: entry.name, type: "audio/wav", size: entry.data.byteLength, addedAt: Date.now(), folder: entry.folder, data: entry.data });
+        imported++;
+        $("sampleStatus").textContent = `Extracting ${imported} / ${entries.length}: ${entry.folder}/${entry.name}`;
+      }
+      const folders = [...new Set(entries.map(entry => entry.folder))];
+      await refreshSamples();
+      if (folders.length) { $("sampleFolder").value = folders[0]; await refreshSamples(); }
+      $("sampleStatus").textContent = `${imported} WAV samples extracted from ${file.name} into ${folders.length} folder(s).`;
+      toast(`ZIP imported: ${imported} WAV sample(s)`);
+    } catch (error) {
+      console.error(error);
+      $("sampleStatus").textContent = "ZIP import failed: " + (error.message || "Unknown error");
+      toast("Could not import ZIP sample pack");
+    } finally { input.value = ""; }
   }
 
   function renderPadPicker() {
@@ -581,27 +650,8 @@
       window.EROAudioEngine.setMasterVolume(value / 100);
     });
     window.EROAudioEngine.setMasterVolume(Number($("volume").value) / 100);
-    $("stop").addEventListener("click", () => {
-      window.EROAudioEngine.stopAll();
-      toast("All voices stopped");
-    });
-
-    $("sampleUpload").addEventListener("change", event => importWav(event.target.files[0]));
-    $("sampleUploadMultiple").addEventListener("change", event => importMultipleWavs(event.target.files));
+    $("sampleZipUpload").addEventListener("change", event => importSampleZip(event.target.files[0]));
     $("sampleFolder").addEventListener("change", () => refreshSamples());
-    $("createSampleFolder").addEventListener("click", async () => {
-      const field = $("newSampleFolder");
-      const name = (field.value || "").trim().replace(/[\\/:*?"<>|]/g, "-");
-      if (!name) return toast("Enter a folder name first");
-      const folders = getSampleFolders();
-      if (!folders.some(folder => folder.toLowerCase() === name.toLowerCase())) folders.push(name);
-      localStorage.setItem("eroSoundPadFolders", JSON.stringify(folders));
-      await refreshFolderPicker();
-      $("sampleFolder").value = name;
-      field.value = "";
-      await refreshSamples();
-      toast("Folder created: " + name);
-    });
     $("sampleLibrary").addEventListener("change", event => {
       selectedSampleId = event.target.value;
       const sample = samples.find(s => s.id === selectedSampleId);

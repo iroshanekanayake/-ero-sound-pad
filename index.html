@@ -763,10 +763,6 @@ button {
 #menuPanel .design-label { margin-top: 12px; }
 #menuPanel .sample-actions button,
 #menuPanel .wide-action { min-height: 40px; }
-#menuPanel .folder-controls { display:grid; grid-template-columns:1fr 1fr auto; gap:7px; align-items:center; }
-#menuPanel .folder-controls input, #menuPanel .folder-controls select { min-width:0; width:100%; }
-#menuPanel .folder-controls button { min-height:36px; padding:6px 10px; }
-@media (max-width: 520px) { #menuPanel .folder-controls { grid-template-columns:1fr 1fr; } #menuPanel #sampleFolder { grid-column:1 / -1; } }
 @media (max-width: 760px) {
   #menuPanel .menu-workspace { grid-template-columns: 1fr; }
 }
@@ -857,11 +853,6 @@ button {
         <div id="volumeText">80%</div>
     </section>
 
-    <section class="menu-section">
-        <h3>ALL SOUNDS</h3>
-        <button id="stop">STOP ALL SOUNDS</button>
-    </section>
-
 
     <section class="menu-section">
         <h3>MIDI INPUT & VELOCITY</h3>
@@ -898,18 +889,11 @@ button {
 
     <section class="menu-section">
         <h3>WAV SAMPLE LIBRARY</h3>
-        <label class="design-label" for="sampleUpload">Import WAV from phone</label>
-        <input id="sampleUpload" type="file" accept=".wav,audio/wav,audio/x-wav">
-        <div class="sample-note">Import one WAV file.</div>
-        <label class="design-label" for="sampleFolder">Sample Folder</label>
-        <div class="folder-controls">
-          <select id="sampleFolder"><option value="All">All Folders</option></select>
-          <input id="newSampleFolder" type="text" maxlength="32" placeholder="New folder name">
-          <button type="button" id="createSampleFolder">CREATE</button>
-        </div>
-        <label class="design-label" for="sampleUploadMultiple">Import multiple WAV files into selected folder</label>
-        <input id="sampleUploadMultiple" type="file" accept=".wav,audio/wav,audio/x-wav" multiple>
-        <div class="sample-note">Choose a folder above, then select many WAV files together from your phone. All selected files will be saved into that folder.</div>
+        <label class="design-label" for="sampleZipUpload">IMPORT SAMPLE PACK (ZIP)</label>
+        <input id="sampleZipUpload" type="file" accept=".zip,application/zip,application/x-zip-compressed">
+        <div class="sample-note">Select a ZIP sample pack. Its folder structure and WAV files will be extracted and saved automatically.</div>
+        <label class="design-label" for="sampleFolder">BROWSE SAMPLE FOLDERS</label>
+        <select id="sampleFolder"><option value="">Select a folder</option></select>
         <label class="design-label" for="sampleLibrary">Saved Samples in Folder</label>
         <select id="sampleLibrary"><option value="">No samples imported</option></select>
         <div class="sample-actions">
